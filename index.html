@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="My Budget">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<title>My Budget</title>
+<style>
+:root{--ink:#1f2937;--muted:#64748b;--card:#fff;--bg:#f5f7fb;--line:#dbe3ee;--green:#2d7d5b;--red:#b52f34;--blue:#2e70b7;--gold:#9b6b18}
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Arial,sans-serif;background:var(--bg);color:var(--ink)}
+main{max-width:900px;margin:auto;padding:22px 16px 40px}
+h1{font-size:30px;letter-spacing:-.5px;text-align:center;margin:4px 0 3px}
+.sub{text-align:center;color:var(--muted);margin-bottom:20px}
+.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.card{background:var(--card);border-radius:18px;padding:17px 14px;border:1px solid var(--line);box-shadow:0 2px 10px #0000000a}
+.card small{display:block;color:#475569;margin-bottom:8px}.value{font-size:25px;font-weight:750}
+.green .value{color:var(--green)}.red .value{color:var(--red)}.blue .value{color:var(--blue)}.gold .value{color:var(--gold)}
+section{margin-top:18px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px}
+h2{font-size:18px;margin:0 0 12px}
+.row{display:grid;grid-template-columns:1fr 105px 86px;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid #edf1f5}
+.row:last-child{border-bottom:0}.name{font-weight:600}.amount{font-variant-numeric:tabular-nums}
+input{width:100%;border:1px solid var(--line);border-radius:10px;padding:9px;font-size:15px;background:#fafcff}
+.bar{height:8px;border-radius:99px;background:#e8edf3;overflow:hidden;margin-top:5px}.fill{height:100%;background:var(--blue)}
+.total{font-weight:800}
+.actions{display:flex;gap:8px;margin-top:12px}.btn{border:0;border-radius:12px;padding:11px 14px;font-weight:700;background:#173b68;color:white}.btn.secondary{background:#e8eef6;color:#173b68}
+.insights{color:#475569;line-height:1.55}.annual{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.annual div{padding:14px;background:#f1f5f9;border-radius:14px;text-align:center}.annual b{display:block;font-size:21px;margin-top:5px}
+@media(min-width:700px){.cards{grid-template-columns:repeat(4,1fr)}.annual{grid-template-columns:repeat(4,1fr)}main{padding-top:30px}}
+</style>
+</head>
+<body>
+<main>
+<h1>MY BUDGET</h1>
+<div class="sub">Monthly Snapshot • Euro (€)</div>
+
+<div class="cards">
+<div class="card green"><small>Monthly Income</small><div class="value" id="income">€0.00</div></div>
+<div class="card red"><small>Monthly Expenses</small><div class="value" id="expenses">€0.00</div></div>
+<div class="card blue"><small>Monthly Balance</small><div class="value" id="balance">€0.00</div></div>
+<div class="card gold"><small>% Income Spent</small><div class="value" id="spent">0%</div></div>
+</div>
+
+<section>
+<h2>Monthly Income</h2>
+<div class="row"><div class="name">Income</div><input id="incomeInput" type="number" step="0.01" value="2510"><div></div></div>
+</section>
+
+<section>
+<h2>Expenses</h2>
+<div id="expenseList"></div>
+<div class="actions">
+<button class="btn" onclick="addExpense()">+ Add expense</button>
+<button class="btn secondary" onclick="resetBudget()">Reset</button>
+</div>
+</section>
+
+<section>
+<h2>Annual Totals</h2>
+<div class="annual">
+<div>Income<b id="aIncome">€0</b></div>
+<div>Expenses<b id="aExpenses">€0</b></div>
+<div>Net Balance<b id="aBalance">€0</b></div>
+<div>Planned Savings<b id="aSavings">€4,800</b></div>
+</div>
+</section>
+
+<section>
+<h2>Key Insights</h2>
+<div class="insights" id="insights"></div>
+</section>
+</main>
+
+<script>
+const initial=[
+["Boys",541.66],["Car loan",418.21],["Rent",400],["Petrol",260],["Food",217],
+["Revolut Savings",200],["AIB Savings",200],["Revolut loan",147],["Car insurance",52],["Gomo",15]
+];
+let expenses=JSON.parse(localStorage.getItem("budgetExpenses")||"null")||initial;
+let income=Number(localStorage.getItem("budgetIncome")||2510);
+
+const euro=n=>new Intl.NumberFormat("en-IE",{style:"currency",currency:"EUR"}).format(n);
+function save(){localStorage.setItem("budgetExpenses",JSON.stringify(expenses));localStorage.setItem("budgetIncome",income)}
+function render(){
+ document.getElementById("incomeInput").value=income;
+ let total=expenses.reduce((s,x)=>s+Number(x[1]||0),0), bal=income-total;
+ document.getElementById("income").textContent=euro(income);
+ document.getElementById("expenses").textContent=euro(total);
+ document.getElementById("balance").textContent=euro(bal);
+ document.getElementById("spent").textContent=(income?((total/income)*100):0).toFixed(1)+"%";
+ document.getElementById("aIncome").textContent=euro(income*12);
+ document.getElementById("aExpenses").textContent=euro(total*12);
+ document.getElementById("aBalance").textContent=euro(bal*12);
+ document.getElementById("aSavings").textContent=euro(expenses.filter(x=>/savings/i.test(x[0])).reduce((s,x)=>s+Number(x[1]),0)*12);
+ const max=Math.max(...expenses.map(x=>Number(x[1])||0),1);
+ document.getElementById("expenseList").innerHTML=expenses.map((x,i)=>`
+ <div class="row">
+   <div><div class="name">${esc(x[0])}</div><div class="bar"><div class="fill" style="width:${(x[1]/max)*100}%"></div></div></div>
+   <input type="number" step="0.01" value="${Number(x[1]).toFixed(2)}" onchange="setAmount(${i},this.value)">
+   <button class="btn secondary" onclick="removeExpense(${i})">Remove</button>
+ </div>`).join("");
+ const sorted=[...expenses].sort((a,b)=>b[1]-a[1]);
+ document.getElementById("insights").innerHTML=`• Largest monthly expense: <b>${esc(sorted[0][0])}</b> (${euro(sorted[0][1])})<br>
+ • Total monthly spending: <b>${euro(total)}</b><br>
+ • Monthly balance: <b>${euro(bal)}</b><br>
+ • Annual balance at the same rate: <b>${euro(bal*12)}</b>`;
+}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+function setAmount(i,v){expenses[i][1]=Number(v)||0;save();render()}
+function removeExpense(i){expenses.splice(i,1);save();render()}
+function addExpense(){let n=prompt("Expense name");if(!n)return;expenses.push([n,0]);save();render()}
+function resetBudget(){if(confirm("Reset the budget to the original figures?")){expenses=initial.map(x=>[x[0],x[1]]);income=2510;save();render()}}
+document.getElementById("incomeInput").addEventListener("change",e=>{income=Number(e.target.value)||0;save();render()});
+render();
+</script>
+</body></html>
